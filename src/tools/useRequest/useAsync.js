@@ -1,4 +1,11 @@
-import { onMounted, ref, toRefs, reactive, toRef } from "@vue/composition-api";
+import {
+  onMounted,
+  ref,
+  toRefs,
+  reactive,
+  toRef,
+  watch
+} from "@vue/composition-api";
 const DEFAULT_KEY = "VUE3_USE_REQUEST_DEFAULT_KEY";
 class Fetch {
   constructor(service, config, initState) {
@@ -10,7 +17,8 @@ class Fetch {
       params: [],
       data: undefined,
       error: undefined,
-      run: this.run.bind(this.that)
+      run: this.run.bind(this.that),
+      refresh: this.refresh.bind(this.that)
     });
 
     this.service = service;
@@ -64,7 +72,7 @@ class Fetch {
           console.error(error);
           // eslint-disable-next-line prefer-promise-reject-errors
           return Promise.reject(
-            "useRequest has caught the exception, if you need to handle the exception yourself, you can set options.throwOnError to true."
+            "useAsync has caught the exception, if you need to handle the exception yourself, you can set options.throwOnError to true."
           );
         }
       });
@@ -73,11 +81,16 @@ class Fetch {
   run(...args) {
     return this._run(...args);
   }
+
+  refresh() {
+    return this.run(...this.state.params);
+  }
 }
 
-export default function useRequest(service, options) {
+export default function useAsync(service, options) {
   const _options = options || {};
   const {
+    refreshDeps = [],
     manual = false,
     onSuccess = () => {},
     defaultLoading = false,
@@ -139,6 +152,14 @@ export default function useRequest(service, options) {
   onMounted(() => {
     if (!manual) {
       run(...defaultParams);
+    }
+  });
+
+  watch([...refreshDeps], () => {
+    if (!manual) {
+      Object.values(fetchesRef.value).forEach(f => {
+        f.refresh();
+      });
     }
   });
 
